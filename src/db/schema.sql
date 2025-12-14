@@ -51,7 +51,7 @@ CREATE INDEX IF NOT EXISTS IDX_FEATURES_TICKER
 CREATE TABLE IF NOT EXISTS MACRO.REGIMES_GLOBAL (
     DT          DATE NOT NULL,
     REGIME      TEXT NOT NULL,               -- e.g. "RISK_ON", "RISK_OFF", "INFLATION_SHOCK"
-    SCORE       DOUBLE PRECISION,            -- optional: confidence/probability/margin
+    SCORE       DOUBLE PRECISION,            -- confidence/probability/margin
     VERSION     TEXT NOT NULL,               -- e.g. "V0_RULES", "V1_HMM"
     CREATED_AT  TIMESTAMP NOT NULL DEFAULT NOW(),
 

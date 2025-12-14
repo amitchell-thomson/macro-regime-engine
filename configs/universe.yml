@@ -261,14 +261,5 @@ macro:
 # - Total: 59 tickers (47 original + 12 critical additions)
 # - All tickers provide daily or lower frequency data
 # - This universe provides broad cross-asset coverage for regime detection
-# 
-# Critical additions for regime detection:
-# - Inflation expectations (T5YIE, T10YIE) vs realized inflation
-# - Real rates (DFII10) - key driver of asset allocation regimes
-# - Style rotation (IVW/IVE, XLU/XLF) - direct regime signals
-# - Leading indicators (NAPM, USSLIND) - forward-looking growth
-# - Financial conditions (NFCI) - aggregate stress/liquidity measure
-# - Fed balance sheet (WALCL) - liquidity regime indicator
-# - Crypto (BTC-USD) - modern liquidity/risk proxy
 # ============================================================================
 

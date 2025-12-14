@@ -1,0 +1,19 @@
+{
+    "sqltools.connections": [
+        {
+            "ssh": "Disabled",
+            "previewLimit": 50,
+            "server": "localhost",
+            "port": 5432,
+            "driver": "PostgreSQL",
+            "name": "macro-local",
+            "database": "macro",
+            "username": "macro_user",
+            "schema": "macro",
+            "pgOptions": {
+                "ssl": false
+            },
+            "autoConnect": true
+        }
+    ]
+}

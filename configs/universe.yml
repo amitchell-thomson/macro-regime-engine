@@ -1,0 +1,265 @@
+# Universe Configuration for Macro Regime Engine
+# ~45 tickers across all asset classes
+# Sources: yfinance (equities, FX, commodities, vol) + FRED (rates, credit, macro)
+
+# ============================================================================
+# EQUITY - Major indices and sectors
+# ============================================================================
+equity:
+  - ticker: ^GSPC          # S&P 500
+    name: "S&P 500 Index"
+    source: yfinance
+    
+  - ticker: ^DJI           # Dow Jones
+    name: "Dow Jones Industrial Average"
+    source: yfinance
+    
+  - ticker: ^IXIC          # Nasdaq
+    name: "NASDAQ Composite"
+    source: yfinance
+    
+  - ticker: ^RUT           # Russell 2000 (small cap)
+    name: "Russell 2000"
+    source: yfinance
+    
+  - ticker: EEM            # Emerging Markets
+    name: "iShares MSCI Emerging Markets ETF"
+    source: yfinance
+    
+  - ticker: ^FTSE          # UK
+    name: "FTSE 100"
+    source: yfinance
+    
+  - ticker: ^N225          # Japan
+    name: "Nikkei 225"
+    source: yfinance
+    
+  - ticker: 000001.SS      # China
+    name: "Shanghai Composite"
+    source: yfinance
+    
+  - ticker: ^STOXX50E      # Europe
+    name: "EURO STOXX 50"
+    source: yfinance
+    
+  # Style Factors (regime indicators)
+  - ticker: IVW            # Growth
+    name: "iShares S&P 500 Growth ETF"
+    source: yfinance
+    
+  - ticker: IVE            # Value
+    name: "iShares S&P 500 Value ETF"
+    source: yfinance
+    
+  # Sector Rotation (defensive vs cyclical)
+  - ticker: XLU            # Defensive
+    name: "Utilities Select Sector SPDR Fund"
+    source: yfinance
+    
+  - ticker: XLF            # Cyclical/Rate Sensitive
+    name: "Financial Select Sector SPDR Fund"
+    source: yfinance
+
+# ============================================================================
+# RATES - Treasury yields and rate indicators
+# ============================================================================
+rates:
+  - ticker: DGS1           # 1-Year Treasury
+    name: "1-Year Treasury Constant Maturity Rate"
+    source: fred
+    
+  - ticker: DGS2           # 2-Year Treasury
+    name: "2-Year Treasury Constant Maturity Rate"
+    source: fred
+    
+  - ticker: DGS5           # 5-Year Treasury
+    name: "5-Year Treasury Constant Maturity Rate"
+    source: fred
+    
+  - ticker: DGS10          # 10-Year Treasury (benchmark)
+    name: "10-Year Treasury Constant Maturity Rate"
+    source: fred
+    
+  - ticker: DGS30          # 30-Year Treasury
+    name: "30-Year Treasury Constant Maturity Rate"
+    source: fred
+    
+  - ticker: T10Y2Y         # 2s10s spread (recession indicator)
+    name: "10-Year Treasury Minus 2-Year Treasury"
+    source: fred
+    
+  - ticker: FEDFUNDS       # Fed Funds Rate
+    name: "Federal Funds Effective Rate"
+    source: fred
+    
+  - ticker: SOFR           # Secured Overnight Financing Rate
+    name: "Secured Overnight Financing Rate"
+    source: fred
+    
+  # Real Rates & Inflation Expectations
+  - ticker: T5YIE          # 5Y Breakeven Inflation
+    name: "5-Year Breakeven Inflation Rate"
+    source: fred
+    
+  - ticker: T10YIE         # 10Y Breakeven Inflation
+    name: "10-Year Breakeven Inflation Rate"
+    source: fred
+    
+  - ticker: DFII10         # Real Rate
+    name: "10-Year Treasury Inflation-Indexed Security, Constant Maturity"
+    source: fred
+
+# ============================================================================
+# FX - Major currency pairs
+# ============================================================================
+fx:
+  - ticker: DX-Y.NYB       # Dollar Index
+    name: "US Dollar Index"
+    source: yfinance
+    
+  - ticker: EURUSD=X       # EUR/USD
+    name: "Euro to US Dollar"
+    source: yfinance
+    
+  - ticker: GBPUSD=X       # GBP/USD
+    name: "British Pound to US Dollar"
+    source: yfinance
+    
+  - ticker: USDJPY=X       # USD/JPY
+    name: "US Dollar to Japanese Yen"
+    source: yfinance
+    
+  - ticker: AUDUSD=X       # AUD/USD (risk-sensitive)
+    name: "Australian Dollar to US Dollar"
+    source: yfinance
+    
+  - ticker: USDCNY=X       # USD/CNY
+    name: "US Dollar to Chinese Yuan"
+    source: yfinance
+
+# ============================================================================
+# CREDIT - Credit spreads and stress indicators
+# ============================================================================
+credit:
+  - ticker: BAMLH0A0HYM2   # High Yield Spread
+    name: "ICE BofA US High Yield Master II OAS"
+    source: fred
+    
+  - ticker: BAMLC0A0CM     # Investment Grade Spread
+    name: "ICE BofA US Corporate Master OAS"
+    source: fred
+    
+  - ticker: T10Y3M         # Term Spread
+    name: "10-Year Treasury Minus 3-Month Treasury"
+    source: fred
+    
+  - ticker: TEDRATE        # TED Spread (bank stress)
+    name: "TED Spread"
+    source: fred
+
+# ============================================================================
+# COMMODITIES - Energy, metals, agriculture
+# ============================================================================
+commodities:
+  - ticker: GC=F           # Gold
+    name: "Gold Futures"
+    source: yfinance
+    
+  - ticker: SI=F           # Silver
+    name: "Silver Futures"
+    source: yfinance
+    
+  - ticker: CL=F           # WTI Crude Oil
+    name: "Crude Oil WTI Futures"
+    source: yfinance
+    
+  - ticker: BZ=F           # Brent Crude
+    name: "Brent Crude Oil Futures"
+    source: yfinance
+    
+  - ticker: NG=F           # Natural Gas
+    name: "Natural Gas Futures"
+    source: yfinance
+    
+  - ticker: HG=F           # Copper (economic indicator)
+    name: "Copper Futures"
+    source: yfinance
+    
+  # Crypto (liquidity/risk proxy)
+  - ticker: BTC-USD        # Bitcoin
+    name: "Bitcoin USD"
+    source: yfinance
+
+# ============================================================================
+# VOL - Volatility indices
+# ============================================================================
+vol:
+  - ticker: ^VIX           # Equity vol
+    name: "CBOE Volatility Index"
+    source: yfinance
+    
+  - ticker: ^VVIX          # Vol of vol
+    name: "CBOE VIX Volatility Index"
+    source: yfinance
+    
+  - ticker: ^MOVE          # Bond vol (if available)
+    name: "ICE BofA MOVE Index"
+    source: yfinance
+
+# ============================================================================
+# MACRO - Economic indicators
+# ============================================================================
+macro:
+  - ticker: UNRATE         # Unemployment Rate
+    name: "Civilian Unemployment Rate"
+    source: fred
+    
+  - ticker: CPIAUCSL       # CPI (inflation)
+    name: "Consumer Price Index for All Urban Consumers"
+    source: fred
+    
+  - ticker: PCEPI          # PCE (Fed's preferred inflation gauge)
+    name: "Personal Consumption Expenditures Price Index"
+    source: fred
+    
+  - ticker: GDP            # Real GDP
+    name: "Real Gross Domestic Product"
+    source: fred
+    
+  - ticker: UMCSENT        # Consumer Sentiment
+    name: "University of Michigan Consumer Sentiment"
+    source: fred
+    
+  - ticker: DCOILWTICO     # WTI Oil Price (spot)
+    name: "Crude Oil Prices: West Texas Intermediate"
+    source: fred
+    
+  - ticker: M2SL           # Money Supply
+    name: "M2 Money Stock"
+    source: fred
+    
+  # Leading Indicators (growth regime detection)
+  - ticker: NAPM           # ISM Manufacturing PMI
+    name: "ISM Manufacturing: PMI Composite Index"
+    source: fred
+    
+  - ticker: USSLIND        # Leading Index
+    name: "Leading Index for the United States"
+    source: fred
+    
+  # Financial Conditions & Liquidity
+  - ticker: NFCI           # Financial Conditions
+    name: "Chicago Fed National Financial Conditions Index"
+    source: fred
+    
+  - ticker: WALCL          # Fed Balance Sheet
+    name: "All Federal Reserve Banks: Total Assets"
+    source: fred
+
+# ============================================================================
+# Notes:
+# - Total: 59 tickers (47 original + 12 critical additions)
+# - All tickers provide daily or lower frequency data
+# - This universe provides broad cross-asset coverage for regime detection
+# ============================================================================
+

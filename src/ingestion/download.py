@@ -21,15 +21,20 @@ def download_yfinance(ticker, start_date='2010-01-01'):
         Or None if download fails
     """
     try:
-        data: pd.DataFrame = pd.DataFrame(yf.download(ticker, start=start_date, progress=False))
+        # Download data (yfinance already returns a DataFrame)
+        data: pd.DataFrame = pd.DataFrame(yf.download(ticker, start=start_date, progress=False, auto_adjust=True))
         
-        # Extract Close column and ensure it's 1-dimensional
-        close_values = data['Close']
+        # Extract Close column and flatten to 1D if needed
+        if isinstance(data['Close'], pd.DataFrame):
+            # Multi-level columns - extract the first (and usually only) column
+            close_values = data['Close'].iloc[:, 0]
+        else:
+            close_values = data['Close']
         
         df = pd.DataFrame({
             'ticker': ticker,
             'dt': data.index,
-            'value': close_values,
+            'value': close_values.values,
             'source': 'yfinance'
         })
         

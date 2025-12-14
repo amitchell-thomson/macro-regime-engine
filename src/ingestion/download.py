@@ -23,10 +23,13 @@ def download_yfinance(ticker, start_date='2010-01-01'):
     try:
         data: pd.DataFrame = pd.DataFrame(yf.download(ticker, start=start_date, progress=False))
         
+        # Extract Close column and ensure it's 1-dimensional
+        close_values = data['Close']
+        
         df = pd.DataFrame({
             'ticker': ticker,
             'dt': data.index,
-            'value': data['Close'],
+            'value': close_values,
             'source': 'yfinance'
         })
         

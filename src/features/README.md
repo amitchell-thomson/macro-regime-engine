@@ -4,6 +4,14 @@
 
 This module computes interpretable cross-asset features from raw time series data. Features are designed to capture regime-defining patterns across asset classes and are stored in the `FEATURES` table with versioning support.
 
+**Key capabilities**:
+- ✅ **376 features** across equity, rates, FX, credit, commodities, volatility, and macro indicators
+- ✅ **Smart forward-fill** - Automatically aligns monthly/quarterly data to business days
+- ✅ **100% complete dataset** - No missing values, ML-ready
+- ✅ **Fast bulk storage** - ~1.5M rows stored quickly using optimized database operations
+- ✅ **Comprehensive diagnostics** - Built-in data quality validation tools
+- ✅ **Versioned** - Multiple feature versions can coexist for comparison
+
 ## Feature Categories
 
 Features are organized into four main categories:
@@ -22,6 +30,115 @@ Not all features are computed for all tickers. Feature computation is asset-clas
 - **Spreads**: Only for specific ticker combinations (e.g., yield curve requires rate tickers)
 - **Ratios**: Only when both components exist
 - **Global Aggregates**: Computed from multiple tickers across asset classes
+
+---
+
+## Data Alignment and Forward Fill
+
+### The Challenge
+
+Raw economic data comes at different frequencies:
+- **Daily**: Equity prices, FX rates, bond yields (5 days/week)
+- **Monthly**: CPI, unemployment, money supply (1 value/month)
+- **Quarterly**: GDP (1 value/quarter)
+
+Machine learning models require a complete rectangular dataset where every feature has a value on every date. Missing values cause problems for most modeling approaches.
+
+### Smart Forward Fill Strategy
+
+The feature engineering pipeline includes intelligent forward-fill logic that:
+
+1. **Automatically detects the natural frequency** of each feature based on observation gaps:
+   - **DAILY**: Median gap ≤ 5 days
+   - **WEEKLY**: Median gap 5-10 days  
+   - **MONTHLY**: Median gap 20-35 days
+   - **QUARTERLY**: Median gap 80-100 days
+   - **ANNUAL**: Median gap > 100 days
+
+2. **Applies appropriate forward-fill** to create a complete dataset:
+   - All features are forward-filled to **business days only** (no weekends)
+   - Monthly/quarterly data (e.g., GDP, CPI) carries forward the most recent value until the next release
+   - Daily data is already complete on business days
+
+3. **Preserves data integrity**:
+   - Forward-fill only happens **after** the first observation (no backward fill)
+   - Values are carried forward until the next actual data release
+   - This mimics real-world conditions where you'd use the most recent available data
+
+### Example
+
+Consider GDP (quarterly data):
+- **Raw data**: 62 observations over 15 years (one per quarter)
+- **After forward-fill**: ~3,900 observations (one per business day)
+- **Interpretation**: Each day uses the most recent GDP release until the next quarter's data arrives
+
+Similarly for CPI (monthly data):
+- **Raw data**: ~189 observations over 15 years (one per month)
+- **After forward-fill**: ~3,900 observations (one per business day)
+- **Interpretation**: Each day uses the most recent CPI reading until next month's release
+
+### Usage
+
+```python
+from features.compute import compute_all_features
+
+# Compute features with smart forward-fill (default)
+result = compute_all_features(
+    conn,
+    version='V2_FWD_FILL',
+    start_date='2010-01-01',
+    forward_fill=True,        # Enable forward-fill (default)
+    business_days_only=True   # Use business days only (default)
+)
+
+# Or disable forward-fill to keep sparse data
+result = compute_all_features(
+    conn,
+    version='V2_RAW',
+    start_date='2010-01-01',
+    forward_fill=False        # Keep original data frequency
+)
+```
+
+### Result
+
+After forward-fill, the feature dataset is:
+- ✅ **100% complete** - Every feature has a value on every business day
+- ✅ **Aligned** - All features share the same date index
+- ✅ **ML-ready** - No missing value handling needed
+- ✅ **Realistic** - Forward-fill mimics actual data availability
+
+**Dataset metrics** (with forward-fill enabled):
+- Total rows: ~1.5M
+- Features: 376
+- Date range: 2010-01-01 to present
+- Business days: ~261 per year
+- Completeness: 100% across all features
+
+### Technical Implementation
+
+The forward-fill logic is implemented in `compute.py`:
+
+1. `detect_feature_frequency(feature_df)`: Detects natural frequency from observation gaps
+2. `forward_fill_features(df_features, business_days_only)`: Applies smart forward-fill
+   - Processes each feature independently
+   - Uses pandas `.reindex()` with business day calendar
+   - Handles duplicates gracefully
+   - Memory efficient (ticker-by-ticker processing)
+
+### When to Use
+
+**Use forward-fill (recommended)** for:
+- Machine learning models that require complete data
+- Time series analysis across multiple features
+- Regime detection models
+- Portfolio construction with macro signals
+
+**Don't use forward-fill** if:
+- You need to analyze original data release patterns
+- You're studying information arrival timing
+- You want to explicitly model missing data
+- You're debugging data quality issues
 
 ---
 
@@ -444,15 +561,160 @@ Features are computed on cleaned data:
 - **Frequency alignment**: Multi-ticker features align to common date index
 - **Validation**: Pre and post-computation quality checks
 
+---
+
+## Data Quality Diagnostics
+
+The notebook `feature_engineering.ipynb` includes comprehensive diagnostic tools to validate data completeness and quality.
+
+### Frequency Analysis
+
+Automatically categorizes each feature by its natural frequency:
+
+```python
+from features.diagnostics import categorize_feature_frequency
+
+df_freq = categorize_feature_frequency(conn, version='V2_FWD_FILL')
+```
+
+**Output includes**:
+- Feature frequency classification (DAILY, MONTHLY, QUARTERLY, etc.)
+- Observations per year
+- Median gap between observations
+- Expected behavior vs actual behavior
+
+**Use cases**:
+- Verify that sparse data (GDP, CPI) is correctly identified
+- Confirm daily features have ~252-261 trading days per year
+- Identify features with irregular update patterns
+
+### Completeness Analysis
+
+Checks for missing data within each feature's date range:
+
+```python
+from features.diagnostics import analyze_feature_completeness
+
+df_analysis = analyze_feature_completeness(conn, version='V2_FWD_FILL')
+```
+
+**Output includes**:
+- Actual vs expected row counts per feature
+- Percentage completeness
+- Missing day counts
+- Large gaps (>7 days)
+
+**Interpretation**:
+- **100% complete**: Feature has value on every business day in its range ✅
+- **<95% complete for daily data**: Indicates data quality issues ⚠️
+- **<95% complete for monthly/quarterly**: Expected and correct ✅
+
+### Weekend Data Check
+
+Verifies that forward-fill correctly uses business days only:
+
+```python
+from features.diagnostics import check_forward_fill_behavior
+
+date_analysis = check_forward_fill_behavior(conn, version='V2_FWD_FILL')
+```
+
+**Output includes**:
+- Total dates in database
+- Day-of-week distribution
+- Weekend date detection
+
+**Expected result**: Only Monday-Friday dates (no Saturday/Sunday)
+
+### Gap Analysis for Specific Features
+
+Detailed investigation of missing dates for individual features:
+
+```python
+from features.diagnostics import find_missing_dates
+
+missing = find_missing_dates(conn, '^GSPC_LEVEL', version='V2_FWD_FILL')
+```
+
+**Output includes**:
+- List of specific missing dates
+- Expected vs actual business day counts
+- Completeness percentage
+
+**Use cases**:
+- Debug specific feature issues
+- Understand historical data gaps
+- Verify market holiday handling
+
+### Expected Results (After Forward Fill)
+
+When forward-fill is enabled, diagnostics should show:
+- ✅ **All features classified as DAILY** (after forward-fill)
+- ✅ **100% completeness** across all features
+- ✅ **~261 observations/year** (US trading days)
+- ✅ **No gaps > 7 days**
+- ✅ **No weekend data**
+
+When forward-fill is disabled, diagnostics will show:
+- 📊 **Mixed frequencies** (DAILY, MONTHLY, QUARTERLY)
+- 📊 **Varying completeness** (low for GDP/CPI is correct)
+- 📊 **Large gaps** for monthly/quarterly data (expected)
+
+---
+
 ## Usage
 
 See `feature_engineering.ipynb` for interactive feature computation and exploration.
 
-To compute all features:
+### Compute Features with Forward Fill
+
 ```python
 from features.compute import compute_all_features
-from features.database import get_connection
+from ingestion.database import get_connection
 
 conn = get_connection(password=db_password)
-result = compute_all_features(conn, version='V1_BASELINE', start_date='2010-01-01')
+
+# Compute with smart forward-fill (recommended for ML)
+result = compute_all_features(
+    conn, 
+    version='V2_FWD_FILL',
+    start_date='2010-01-01',
+    forward_fill=True,
+    business_days_only=True
+)
+
+print(f"Stored {result['rows_stored']:,} feature rows")
+print(f"Features: {result['unique_features']}")
+print(f"Forward-filled: {result['forward_filled']}")
+```
+
+### Compute Features Without Forward Fill
+
+```python
+# Keep original data frequency (for analysis/debugging)
+result = compute_all_features(
+    conn,
+    version='V2_RAW', 
+    start_date='2010-01-01',
+    forward_fill=False
+)
+```
+
+### Load Features for Analysis
+
+```python
+from features.database import get_features
+
+# Load all features for a version
+df_features = get_features(conn, version='V2_FWD_FILL')
+
+# Load specific feature
+df_gdp = get_features(conn, feature='GDP_LEVEL', version='V2_FWD_FILL')
+
+# Load date range
+df_recent = get_features(
+    conn, 
+    version='V2_FWD_FILL',
+    start_date='2024-01-01'
+)
 ```

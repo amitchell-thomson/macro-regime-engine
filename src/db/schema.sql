@@ -1,12 +1,6 @@
 -- sql/db/schema.sql
 
--- Drop existing tables (in reverse dependency order)
-DROP TABLE IF EXISTS MACRO.REGIMES_GLOBAL CASCADE;
-DROP TABLE IF EXISTS MACRO.FEATURES CASCADE;
-DROP TABLE IF EXISTS MACRO.RAW_SERIES CASCADE;
-DROP TABLE IF EXISTS MACRO.INGEST_LOG CASCADE;
-
--- Drop and recreate schema
+-- Drop and recreate schema (CASCADE handles all objects within)
 DROP SCHEMA IF EXISTS MACRO CASCADE;
 CREATE SCHEMA MACRO;
 
@@ -63,7 +57,7 @@ CREATE TABLE MACRO.REGIMES_GLOBAL (
     VERSION     TEXT NOT NULL,               -- e.g. "V0_RULES", "V1_HMM"
     CREATED_AT  TIMESTAMP NOT NULL DEFAULT NOW(),
 
-    PRIMARY KEY (DT, VERSION)
+    PRIMARY KEY (DT, REGIME, VERSION)
 );
 
 CREATE INDEX IDX_REGIMES_GLOBAL_DT
@@ -71,6 +65,33 @@ CREATE INDEX IDX_REGIMES_GLOBAL_DT
 
 CREATE INDEX IDX_REGIMES_GLOBAL_REGIME
     ON MACRO.REGIMES_GLOBAL (REGIME);
+
+CREATE INDEX IDX_REGIMES_GLOBAL_VERSION
+    ON MACRO.REGIMES_GLOBAL (VERSION);
+
+CREATE TABLE MACRO.REGIME_METADATA (
+    DT                    DATE NOT NULL,
+    VERSION              TEXT NOT NULL,
+    DOMINANT_REGIME      TEXT NOT NULL,           -- Most likely regime
+    ENTROPY              DOUBLE PRECISION,        -- Uncertainty measure (0=certain, high=uncertain)
+    MAX_PROBABILITY      DOUBLE PRECISION,        -- Confidence in dominant regime
+    REGIME_CHANGED       BOOLEAN,                 -- Did regime switch from yesterday?
+    PREV_REGIME          TEXT,                    -- Previous dominant regime
+    DAYS_IN_REGIME       INTEGER,                 -- Consecutive days in current regime
+    TRANSITION_STRENGTH  DOUBLE PRECISION,        -- Size of probability shift from yesterday
+    CREATED_AT           TIMESTAMP NOT NULL DEFAULT NOW(),
+    
+    PRIMARY KEY (DT, VERSION)
+);
+
+CREATE INDEX IDX_REGIME_METADATA_DT
+    ON MACRO.REGIME_METADATA (DT);
+
+CREATE INDEX IDX_REGIME_METADATA_VERSION
+    ON MACRO.REGIME_METADATA (VERSION);
+
+CREATE INDEX IDX_REGIME_METADATA_DOMINANT
+    ON MACRO.REGIME_METADATA (DOMINANT_REGIME);
 
 
 -- 4) INGEST LOG (TRACKING & DEBUGGING)

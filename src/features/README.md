@@ -62,7 +62,14 @@ Returns are computed for Equity, FX, Commodities, and Volatility indices.
 
 ### Changes (Rate-Based Assets Only)
 
-Changes are computed for Rates, Credit spreads, and some Macro indicators.
+Changes are computed for Rates, Credit spreads, and Macro indicators. The computation automatically detects data frequency and computes appropriate changes:
+
+- **Daily data** (RATES, CREDIT): `CHG_1D`, `CHG_20D`, `CHG_60D`
+- **Monthly data** (most MACRO indicators): `CHG_MOM` (month-over-month), `CHG_YOY` (year-over-year)
+- **Quarterly data** (GDP): `CHG_QOQ` (quarter-over-quarter), `CHG_YOY` (year-over-year)
+- **Weekly data**: `CHG_WOW` (week-over-week)
+
+#### Daily Changes (for RATES, CREDIT)
 
 #### `{TICKER}_CHG_1D`
 - **Formula**: `Value[t] - Value[t-1]`
@@ -70,7 +77,7 @@ Changes are computed for Rates, Credit spreads, and some Macro indicators.
 - **Interpretation**: One-day change in yield or spread
 - **Regime Signal**: Rising yields in INFLATION_SHOCK, falling in DISINFLATION
 - **Typical Range**: -50 bps to +50 bps for yields
-- **Applicable To**: RATES, CREDIT, MACRO (rate-based)
+- **Applicable To**: RATES, CREDIT (daily data)
 
 #### `{TICKER}_CHG_20D`
 - **Formula**: `Value[t] - Value[t-20]`
@@ -84,6 +91,42 @@ Changes are computed for Rates, Credit spreads, and some Macro indicators.
 - **Calculation**: 60-day change in rate/spread
 - **Interpretation**: Long-term rate/spread trend
 - **Regime Signal**: Confirms sustained monetary regime changes
+
+#### Monthly Changes (for monthly MACRO indicators)
+
+#### `{TICKER}_CHG_MOM`
+- **Formula**: `Value[t] - Value[t-1 month]`
+- **Calculation**: Month-over-month change
+- **Interpretation**: Monthly change in indicator
+- **Regime Signal**: Captures monthly trends in inflation, employment, etc.
+- **Typical Range**: Varies by indicator
+- **Applicable To**: UNRATE, CPIAUCSL, PCEPI, UMCSENT, M2SL, USSLIND
+
+#### `{TICKER}_CHG_YOY`
+- **Formula**: `Value[t] - Value[t-12 months]`
+- **Calculation**: Year-over-year change
+- **Interpretation**: Annual change in indicator
+- **Regime Signal**: Captures longer-term trends and regime shifts
+- **Typical Range**: Varies by indicator
+- **Applicable To**: Monthly MACRO indicators
+
+#### Quarterly Changes (for quarterly MACRO indicators)
+
+#### `{TICKER}_CHG_QOQ`
+- **Formula**: `Value[t] - Value[t-1 quarter]`
+- **Calculation**: Quarter-over-quarter change
+- **Interpretation**: Quarterly change in indicator
+- **Regime Signal**: Captures quarterly growth trends
+- **Typical Range**: Varies by indicator
+- **Applicable To**: GDP
+
+#### `{TICKER}_CHG_YOY`
+- **Formula**: `Value[t] - Value[t-4 quarters]`
+- **Calculation**: Year-over-year change (quarterly)
+- **Interpretation**: Annual change in quarterly indicator
+- **Regime Signal**: Captures annual growth trends
+- **Typical Range**: Varies by indicator
+- **Applicable To**: GDP
 
 ### Momentum (Price-Based Assets Only)
 

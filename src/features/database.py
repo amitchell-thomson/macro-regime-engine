@@ -4,6 +4,7 @@ Handles loading raw data and storing computed features.
 """
 
 import psycopg2
+from psycopg2.extras import execute_values
 import pandas as pd
 from datetime import datetime
 from typing import Optional
@@ -72,7 +73,7 @@ def get_raw_series(conn, ticker=None, asset_class=None,
 
 def upsert_features(conn, df, version):
     """
-    Insert or update features in FEATURES table.
+    Insert or update features in FEATURES table using bulk operations.
     
     Args:
         conn: Database connection
@@ -86,29 +87,46 @@ def upsert_features(conn, df, version):
         return 0
     
     cursor = conn.cursor()
-    row_count = 0
     
-    # Prepare data for batch insert
-    for _, row in df.iterrows():
-        cursor.execute("""
-            INSERT INTO macro.features 
-                (dt, ticker, asset_class, feature, value, version, computed_at)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-            ON CONFLICT (dt, ticker, feature, version) 
-            DO UPDATE SET 
-                value = EXCLUDED.value,
-                asset_class = EXCLUDED.asset_class,
-                computed_at = EXCLUDED.computed_at;
-        """, (
+    # Prepare data as list of tuples
+    computed_at = datetime.now()
+    data = [
+        (
             row['dt'],
             row['ticker'],
             row['asset_class'],
             row['feature'],
-            row['value'],
+            float(row['value']) if pd.notna(row['value']) else None,
             version,
-            datetime.now()
-        ))
-        row_count += 1
+            computed_at
+        )
+        for _, row in df.iterrows()
+    ]
+    
+    # Use execute_values for bulk insert with ON CONFLICT
+    query = """
+        INSERT INTO macro.features 
+            (dt, ticker, asset_class, feature, value, version, computed_at)
+        VALUES %s
+        ON CONFLICT (dt, ticker, feature, version) 
+        DO UPDATE SET 
+            value = EXCLUDED.value,
+            asset_class = EXCLUDED.asset_class,
+            computed_at = EXCLUDED.computed_at
+    """
+    
+    # Execute in batches for better memory management
+    batch_size = 10000
+    row_count = 0
+    
+    for i in range(0, len(data), batch_size):
+        batch = data[i:i + batch_size]
+        execute_values(cursor, query, batch, page_size=1000)
+        row_count += len(batch)
+        
+        # Print progress for large datasets
+        if i + batch_size < len(data) and (i + batch_size) % 100000 == 0:
+            print(f"  Inserted {i + batch_size:,} / {len(data):,} rows...")
     
     conn.commit()
     cursor.close()

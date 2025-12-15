@@ -21,6 +21,136 @@ from .aggregates import (
 )
 
 
+def detect_feature_frequency(feature_df):
+    """
+    Detect the natural frequency of a feature based on observation gaps.
+    
+    Args:
+        feature_df: DataFrame with 'dt' column (datetime)
+    
+    Returns:
+        str: 'DAILY', 'WEEKLY', 'MONTHLY', 'QUARTERLY', or 'ANNUAL'
+    """
+    if len(feature_df) < 2:
+        return 'DAILY'
+    
+    # Calculate median gap between observations
+    date_diffs = feature_df['dt'].diff().dropna()
+    median_gap = date_diffs.median().days if len(date_diffs) > 0 else 1
+    
+    # Categorize based on median gap
+    if median_gap <= 5:
+        return 'DAILY'
+    elif 5 < median_gap <= 10:
+        return 'WEEKLY'
+    elif 20 <= median_gap <= 35:
+        return 'MONTHLY'
+    elif 80 <= median_gap <= 100:
+        return 'QUARTERLY'
+    elif median_gap > 100:
+        return 'ANNUAL'
+    else:
+        return 'DAILY'  # Default to daily for irregular patterns
+
+
+def forward_fill_features(df_features, business_days_only=True):
+    """
+    Smart forward-fill that respects the natural frequency of different features.
+    Daily features (equities, rates) are filled to business days.
+    Monthly/quarterly features (macro indicators) are forward-filled but keep original frequency.
+    
+    Args:
+        df_features: DataFrame with columns: dt, ticker, asset_class, feature, value
+        business_days_only: If True, use business days for daily data
+    
+    Returns:
+        DataFrame with intelligently forward-filled features
+    """
+    if df_features.empty:
+        return df_features
+    
+    print("Smart forward-filling features based on natural frequency...")
+    print(f"  Before: {len(df_features):,} rows")
+    
+    # Ensure dt is datetime for operations
+    df_features['dt'] = pd.to_datetime(df_features['dt'])
+    
+    # Get overall date range
+    global_min_date = df_features['dt'].min()
+    global_max_date = df_features['dt'].max()
+    
+    # Create business day range for daily features
+    business_dates = pd.bdate_range(start=global_min_date, end=global_max_date)
+    print(f"  Business days in range: {len(business_dates)} days")
+    
+    # Process each feature separately (not ticker)
+    processed_chunks = []
+    unique_features = df_features['feature'].unique()
+    
+    frequency_counts = {'DAILY': 0, 'WEEKLY': 0, 'MONTHLY': 0, 'QUARTERLY': 0, 'ANNUAL': 0}
+    
+    for idx, feature in enumerate(unique_features, 1):
+        feature_df = df_features[df_features['feature'] == feature].copy()
+        feature_df = feature_df.sort_values('dt')
+        
+        ticker = feature_df['ticker'].iloc[0]
+        asset_class = feature_df['asset_class'].iloc[0]
+        
+        # Handle duplicates: keep the last value for duplicate dates
+        feature_df = feature_df.drop_duplicates(subset=['dt'], keep='last')
+        
+        # Detect frequency
+        frequency = detect_feature_frequency(feature_df)
+        frequency_counts[frequency] += 1
+        
+        # Apply forward-fill based on frequency
+        if frequency == 'DAILY':
+            # Daily features: forward-fill to all business days
+            feature_df = feature_df.set_index('dt')
+            feature_df = feature_df.reindex(business_dates, method='ffill')
+            feature_df = feature_df.reset_index()
+            feature_df.columns = ['dt'] + list(feature_df.columns[1:])
+            
+        elif frequency in ['WEEKLY', 'MONTHLY', 'QUARTERLY', 'ANNUAL']:
+            # Lower frequency: forward-fill only to business days, but keep sparse
+            # This preserves the monthly/quarterly nature while filling forward
+            feature_df = feature_df.set_index('dt')
+            feature_df = feature_df.reindex(business_dates, method='ffill')
+            feature_df = feature_df.reset_index()
+            feature_df.columns = ['dt'] + list(feature_df.columns[1:])
+        
+        # Remove NaNs (dates before first observation)
+        feature_df = feature_df.dropna(subset=['value'])
+        
+        # Ensure metadata columns exist
+        feature_df['feature'] = feature
+        feature_df['ticker'] = ticker
+        feature_df['asset_class'] = asset_class
+        
+        processed_chunks.append(feature_df[['dt', 'ticker', 'asset_class', 'feature', 'value']])
+        
+        # Progress indicator
+        if idx % 50 == 0 or idx == len(unique_features):
+            print(f"  Processed {idx}/{len(unique_features)} features")
+    
+    # Report frequency distribution
+    print(f"\n  Frequency distribution:")
+    for freq, count in frequency_counts.items():
+        if count > 0:
+            print(f"    {freq}: {count} features")
+    
+    # Combine all features
+    result_df = pd.concat(processed_chunks, ignore_index=True)
+    
+    # Convert dt back to date type
+    result_df['dt'] = result_df['dt'].dt.date  # type: ignore
+    
+    print(f"\n  After: {len(result_df):,} rows")
+    print(f"  Added {len(result_df) - len(df_features):,} rows via forward-fill")
+    
+    return result_df
+
+
 def load_raw_data(conn, ticker_filter=None, start_date=None, end_date=None):
     """
     Load raw data from database and organize by ticker and asset class.
@@ -102,9 +232,10 @@ def prepare_data_for_features(data_dict, asset_class_map):
 
 
 def compute_all_features(conn, version='V1_BASELINE', start_date=None, 
-                         end_date=None, ticker_filter=None):
+                         end_date=None, ticker_filter=None, 
+                         forward_fill=True, business_days_only=True):
     """
-    Main function to compute all features.
+    Main function to compute all features with optional forward-filling.
     
     Args:
         conn: Database connection
@@ -112,6 +243,8 @@ def compute_all_features(conn, version='V1_BASELINE', start_date=None,
         start_date: Optional start date
         end_date: Optional end date
         ticker_filter: Optional list of tickers to filter
+        forward_fill: If True, forward-fill features to complete date range
+        business_days_only: If True, only use business days (saves storage)
     
     Returns:
         Dictionary with summary statistics
@@ -261,20 +394,26 @@ def compute_all_features(conn, version='V1_BASELINE', start_date=None,
     if 'dt' in all_features_df.columns:
         all_features_df['dt'] = pd.to_datetime(all_features_df['dt']).dt.date
     
-    print(f"Total features computed: {len(all_features_df)}")
-    print(f"Unique features: {all_features_df['feature'].nunique()}")
+    print(f"Total features computed: {len(all_features_df):,}")
+    print(f"Unique features: {all_features_df['feature'].nunique()}")  # type: ignore
     print(f"Date range: {all_features_df['dt'].min()} to {all_features_df['dt'].max()}")
+    
+    # Forward-fill features if requested
+    if forward_fill:
+        all_features_df = forward_fill_features(all_features_df, business_days_only)
     
     # Store in database
     print(f"Storing features in database (version: {version})...")
     rows_stored = upsert_features(conn, all_features_df, version)
-    print(f"Stored {rows_stored} feature rows")
+    print(f"Stored {rows_stored:,} feature rows")
     
     return {
         'status': 'success',
         'version': version,
         'total_features': len(all_features_df),
-        'unique_features': all_features_df['feature'].nunique(),
+        'unique_features': all_features_df['feature'].nunique(),  # type: ignore
         'rows_stored': rows_stored,
-        'date_range': (str(all_features_df['dt'].min()), str(all_features_df['dt'].max()))
+        'date_range': (str(all_features_df['dt'].min()), str(all_features_df['dt'].max())),
+        'forward_filled': forward_fill,
+        'business_days_only': business_days_only if forward_fill else None
     }

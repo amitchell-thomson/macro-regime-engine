@@ -238,11 +238,7 @@ macro:
     name: "M2 Money Stock"
     source: fred
     
-  # Leading Indicators (growth regime detection)
-  - ticker: NAPM           # ISM Manufacturing PMI
-    name: "ISM Manufacturing: PMI Composite Index"
-    source: fred
-    
+  # Leading Indicators (growth regime detection)    
   - ticker: USSLIND        # Leading Index
     name: "Leading Index for the United States"
     source: fred

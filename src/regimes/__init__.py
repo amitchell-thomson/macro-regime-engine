@@ -5,11 +5,19 @@ This module provides tools for detecting macro market regimes from cross-asset f
 Currently supports HMM-based regime detection with plans for additional methods in the future.
 """
 
-from .features import get_regime_features, validate_feature_data, REGIME_FEATURES
+from .feature_selection import (
+    select_regime_features,
+    ECONOMIC_BLOCKS_DEFAULT,
+    economic_prefilter,
+    prune_redundant_features,
+    apply_block_pca
+)
 
 __all__ = [
-    'get_regime_features',
-    'validate_feature_data',
-    'REGIME_FEATURES',
+    'select_regime_features',
+    'ECONOMIC_BLOCKS_DEFAULT',
+    'economic_prefilter',
+    'prune_redundant_features',
+    'apply_block_pca',
 ]
 
